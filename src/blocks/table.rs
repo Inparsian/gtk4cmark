@@ -16,7 +16,11 @@ impl BlockWidget for TableBlock {
         self.root.upcast_ref()
     }
 
-    fn update(&mut self, _node: &Node) {}
+    fn update(&mut self, node: &Node) {
+        if let Node::Table(table) = node {
+            self.set_table(table);
+        }
+    }
 
     fn valid_node(&self, node: &Node) -> bool {
         matches!(node, Node::Table(_))

@@ -23,8 +23,9 @@ impl BlockWidget for CodeBlock {
     }
 
     fn update(&mut self, node: &Node) {
-        if let Node::Code(code_block) = node {
-            self.set_lang(code_block.lang.as_ref());
+        if let Node::Code(code) = node {
+            self.set_lang(code.lang.as_ref());
+            self.set_markup(&code.value);
         }
     }
 
@@ -47,14 +48,10 @@ impl BlockWidget for CodeBlock {
     }
 }
 
-impl CodeBlock {
-    fn new(lang: Option<&String>) -> Self {
+impl Default for CodeBlock {
+    fn default() -> Self {
         let buffer = Buffer::new(None);
         buffer.set_highlight_syntax(true);
-
-        if let Some(language) = LanguageManager::new().language(lang.unwrap_or(&"plaintext".to_owned())) {
-            buffer.set_language(Some(&language));
-        }
 
         if let Some(scheme) = StyleSchemeManager::new().scheme("classic-dark") {
             buffer.set_style_scheme(Some(&scheme));
@@ -97,10 +94,7 @@ impl CodeBlock {
             .valign(gtk4::Align::Start)
             .wrap(true)
             .selectable(false)
-            .label(
-                lang.as_ref()
-                    .map_or("plaintext", |l| l.as_str()),
-            )
+            .label("plaintext")
             .build();
 
         header_box.append(&lang_label);
@@ -119,12 +113,14 @@ impl CodeBlock {
         Self {
             root,
             source_view,
-            lang: lang.cloned(),
+            lang: None,
             lang_label: Some(lang_label),
             line_cache: Rc::new(RefCell::new(HashMap::new())),
         }
     }
+}
 
+impl CodeBlock {
     fn set_lang(&mut self, lang: Option<&String>) {
         let old_lang = self.lang.clone();
         if old_lang == lang.cloned() {
@@ -166,7 +162,7 @@ impl CodeBlock {
 pub struct CodeBlockFactory;
 impl BlockWidgetFactory for CodeBlockFactory {
     fn create(&self) -> Box<dyn BlockWidget> {
-        Box::new(CodeBlock::new(None))
+        Box::new(CodeBlock::default())
     }
 
     fn matches(&self, node: &Node) -> bool {

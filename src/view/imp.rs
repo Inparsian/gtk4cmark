@@ -6,25 +6,20 @@ use gtk4::glib::{self, Properties};
 use gtk4::subclass::prelude::*;
 use gtk4::prelude::*;
 use markdown::ParseOptions;
-use markdown::mdast::Node;
 use relm4::RelmIterChildrenExt as _;
 
 use super::MarkdownBlock;
 use super::super::ir::{RenderBuffer, RenderBlock};
-use super::super::blocks::BlockWidgetFactory;
-use super::super::blocks::text::{TextBlock, TextBlockFactory};
-use super::super::blocks::code::{CodeBlock, CodeBlockFactory};
-use super::super::blocks::table::{TableBlock, TableBlockFactory};
-use super::super::blocks::thematicbreak::ThematicBreakBlockFactory;
+use super::super::blocks::{BlockWidgetFactory, text, thematicbreak, code, table};
 
 const DEPTH_MULTIPLIER: i32 = 16;
 const MARKER_SPACING: i32 = 4;
 
 static FACTORIES: LazyLock<Vec<Box<dyn BlockWidgetFactory + Send + Sync>>> = LazyLock::new(|| vec![
-    Box::new(TextBlockFactory),
-    Box::new(CodeBlockFactory),
-    Box::new(TableBlockFactory),
-    Box::new(ThematicBreakBlockFactory),
+    Box::new(text::TextBlockFactory),
+    Box::new(code::CodeBlockFactory),
+    Box::new(table::TableBlockFactory),
+    Box::new(thematicbreak::ThematicBreakBlockFactory),
 ]);
 
 #[derive(Default, Properties)]
@@ -108,38 +103,14 @@ impl MarkdownView {
         });
 
         for (i, block) in self.buffer.borrow().blocks.iter().enumerate() {
-            self.render_block(i, block, &children);
-        }
-    }
-
-    fn render_block(
-        &self,
-        i: usize,
-        block: &RenderBlock,
-        children: &[gtk4::Widget],
-    ) {
-        match &block.node {
-            Node::Paragraph(paragraph) => if let Some(text_block) = self.add_block(i, block, children) {
-                text_block.block.downcast_ref::<TextBlock>().unwrap().set_from_paragraph(paragraph);
-            },
-
-            Node::Heading(heading) => if let Some(text_block) = self.add_block(i, block, children) {
-                text_block.block.downcast_ref::<TextBlock>().unwrap().set_from_heading(heading);
-            },
-
-            Node::Code(code) => if let Some(code_block) = self.add_block(i, block, children) {
-                code_block.block.downcast_ref::<CodeBlock>().unwrap().set_markup(&code.value);
-            },
-
-            Node::Table(table) => if let Some(table_block) = self.add_block(i, block, children) {
-                table_block.block.downcast_ref::<TableBlock>().unwrap().set_table(table);
-            },
-
-            Node::ThematicBreak(_) => {
-                self.add_block(i, block, children);
-            },
-
-            _ => {},
+            if let Some(mut md_block) = self.add_block(i, block, &children) {
+                md_block.block.update(&block.node);
+            } else {
+                #[cfg(debug_assertions)]
+                {
+                    eprintln!("Failed to create or reuse block for node: {:?}", block.node);
+                }
+            }
         }
     }
 

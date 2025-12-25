@@ -22,8 +22,14 @@ impl BlockWidget for TextBlock {
     fn root(&self) -> &gtk4::Widget {
         self.root.upcast_ref()
     }
-
-    fn update(&mut self, _node: &Node) {}
+    
+    fn update(&mut self, node: &Node) {
+        match node {
+            Node::Paragraph(paragraph) => self.set_from_paragraph(paragraph),
+            Node::Heading(heading) => self.set_from_heading(heading),
+            _ => {}
+        }
+    }
 
     fn valid_node(&self, node: &Node) -> bool {
         matches!(node, Node::Paragraph(_) | Node::Heading(_))
